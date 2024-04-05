@@ -1,0 +1,46 @@
+from machine import Pin, I2C
+from filefifo import Filefifo
+
+
+class PeakFinder:
+    def find_positive_peaks(self, signal_data):
+        peaks = []
+        for i in range(1, len(signal_data) - 1):
+            if signal_data[i] > signal_data[i - 1] and signal_data[i] > signal_data[i + 1]:
+                peaks.append(i)
+        return peaks
+
+class SignalAnalyzer:
+    def __init__(self, sample_rate):
+        self.sample_rate = sample_rate
+
+    def analyze_signal(self, peaks):
+        peak_to_peak_intervals_samples = [peaks[i+1] - peaks[i] for i in range(len(peaks) - 1)]
+
+        peak_to_peak_intervals_seconds = [interval / self.sample_rate for interval in peak_to_peak_intervals_samples]
+
+        frequency = self.sample_rate / (sum(peak_to_peak_intervals_samples) / len(peak_to_peak_intervals_samples))
+
+        return peak_to_peak_intervals_samples, peak_to_peak_intervals_seconds, frequency
+
+def main():
+    data = Filefifo(10, name='capture_250Hz_03.txt')
+
+    signal_data = []
+    for _ in range(2500): 
+        signal_data.append(float(data.get()))
+
+    peak_finder = PeakFinder()
+    peaks = peak_finder.find_positive_peaks(signal_data)
+
+    signal_analyzer = SignalAnalyzer(sample_rate=250)
+    peak_to_peak_intervals_samples, peak_to_peak_intervals_seconds, frequency = signal_analyzer.analyze_signal(peaks)
+
+    print("Peak-to-peak intervals in number of samples:", peak_to_peak_intervals_samples[:3])
+    print("Peak-to-peak intervals in seconds:", peak_to_peak_intervals_seconds[:3])
+    print("Frequency of the signal:", frequency, "Hz") 
+
+
+if __name__ == "__main__":
+    main()
+    
